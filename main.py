@@ -29,12 +29,12 @@ def setSeed(opt, seed):
 
 def parse_arguments(parser):
     ###Training Hyperparameters
-    parser.add_argument('--mode', type=str, default='test', choices=["train","test"], help="training mode or testing mode")
-    parser.add_argument('--device', type=str, default="cuda:0", choices=['cpu','cuda:0','cuda:1','cuda:2'],help="GPU/CPU devices")
+    parser.add_argument('--mode', type=str, default='train', choices=["train","test"], help="training mode or testing mode")
+    parser.add_argument('--device', type=str, default="cpu", choices=['cpu','cuda:0','cuda:1','cuda:2'],help="GPU/CPU devices")
     parser.add_argument('--seed', type=int, default=42, help="random seed")
     parser.add_argument('--digit2zero', action="store_true", default=True, help="convert the number to 0, make it true is better")
     parser.add_argument('--dataset', type=str, default="conll2003")
-    parser.add_argument('--embedding_file', type=str, default="data/glove.6B.100d.txt")
+    parser.add_argument('--embedding_file', type=str, default="/home/oguzhan/Marmara/Datasets/glove/glove.6B.100d.txt")
     # parser.add_argument('--embedding_file', type=str, default=None)
     parser.add_argument('--embedding_dim', type=int, default=100)
     parser.add_argument('--optimizer', type=str, default="sgd")
@@ -43,7 +43,7 @@ def parse_arguments(parser):
     parser.add_argument('--l2', type=float, default=1e-8)
     parser.add_argument('--lr_decay', type=float, default=0)
     parser.add_argument('--batch_size', type=int, default=10)
-    parser.add_argument('--num_epochs', type=int, default=100)
+    parser.add_argument('--num_epochs', type=int, default=1)
     parser.add_argument('--train_num', type=int, default=-1)
     parser.add_argument('--dev_num', type=int, default=-1)
     parser.add_argument('--test_num', type=int, default=-1)
@@ -217,6 +217,47 @@ def write_results(filename:str, insts):
 
 
 def main():
+    TASKS = ['ner_german', 'ner']
+    USE_DEV = True
+
+    char_set = set()
+    for task in TASKS:
+
+        t = __import__(task)
+        data_list = [t.TRAIN_DATA, t.DEV_DATA, t.TEST_DATA]
+        char_index, _ = t.create_char_index(data_list)
+        for k, v in char_index.items():
+            char_set.add(k)
+    char_index, char_cnt = {}, 0
+    for char in char_set:
+        char_index[char] = char_cnt
+        char_cnt += 1
+
+    for i, task in enumerate(TASKS):
+        t = __import__(task)
+        word_index, word_cnt = t.create_word_index([t.TRAIN_DATA, t.DEV_DATA, t.TEST_DATA])
+        wx, y, m = t.read_data(t.TRAIN_DATA, word_index)
+        if USE_DEV and task == 'ner':
+            dev_wx, dev_y, dev_m = t.read_data(t.TEST_DATA, word_index)
+            wx, y, m = np.vstack((wx, dev_wx)), np.vstack((y, dev_y)), np.vstack((m, dev_m))
+        twx, ty, tm = t.read_data(t.DEV_DATA, word_index)
+        x, cm = t.read_char_data(t.TRAIN_DATA, char_index)
+        if USE_DEV and task == 'ner':
+            dev_x, dev_cm = t.read_char_data(t.TEST_DATA, char_index)
+            x, cm = np.vstack((x, dev_x)), np.vstack((cm, dev_cm))
+        tx, tcm = t.read_char_data(t.DEV_DATA, char_index)
+        if task == 'ner':
+            list_prefix = t.read_list()
+            gaze = t.read_list_data(t.TRAIN_DATA, list_prefix)
+            tgaze = t.read_list_data(t.DEV_DATA, list_prefix)
+            if USE_DEV:
+                dev_gaze = t.read_list_data(t.TEST_DATA, list_prefix)
+                gaze = np.vstack((gaze, dev_gaze))
+        else:
+            gaze, tgaze = None, None
+
+
+
     parser = argparse.ArgumentParser(description="LSTM CRF implementation")
     opt = parse_arguments(parser)
     conf = Config(opt)
@@ -224,9 +265,10 @@ def main():
     reader = Reader(conf.digit2zero)
     setSeed(opt, conf.seed)
 
-    trains = reader.read_conll(conf.train_file, conf.train_num, True)
-    devs = reader.read_conll(conf.dev_file, conf.dev_num, False)
-    tests = reader.read_conll(conf.test_file, conf.test_num, False)
+    trains = reader.read_txt(conf.train_file, conf.train_num, True)
+    devs = reader.read_txt(conf.dev_file, conf.dev_num, False)
+    tests = reader.read_txt(conf.test_file, conf.test_num, False)
+    trains_target = reader.read_txt(conf.train_target_file_file, conf.train_num, True)
 
     if conf.context_emb != ContextEmb.none:
         print('Loading the elmo vectors for all datasets.')
@@ -237,6 +279,8 @@ def main():
     conf.use_iobes(devs)
     conf.use_iobes(tests)
     conf.build_label_idx(trains)
+    conf.use_iobes(trains_target)
+    conf.build_label_idx_target(trains_target)
 
 
 

@@ -49,16 +49,25 @@ class Config:
         self.digit2zero = args.digit2zero
 
         self.dataset = args.dataset
-        # self.train_file = "data/" + self.dataset + "/train.txt"
-        # self.dev_file = "data/" + self.dataset + "/dev.txt"
+        DIRSOURCE = '/home/oguzhan/Marmara/Datasets/conll003/conll003-englishversion/'
+        DIRTARGET= '/home/oguzhan/Marmara/Datasets/conll2009/span/datasets/'
+        TRAIN_DATA = DIRSOURCE + 'train.txt'
+        TEST_DATA = DIRSOURCE + 'test.txt'
+        DEV_DATA = DIRSOURCE + 'valid.txt'
+        TRAIN_TARGET_DATA = DIRTARGET + 'train.txt'
+        TEST_TARGET_DATA = DIRTARGET + 'trial.txt'
+        DEV_TARGET_DATA = DIRTARGET + 'development.txt'
+        self.train_file = TRAIN_DATA
+        self.dev_file = DEV_DATA
         # ## following datasets do not have development set
         # if self.dataset in ("abc", "cnn", "mnb", "nbc", "p25", "pri", "voa"):
         #     self.dev_file = "data/" + self.dataset + "/test.conllx"
-        # self.test_file = "data/" + self.dataset + "/test.txt"
+        self.test_file = TEST_DATA
+        self.train_target_file = TRAIN_TARGET_DATA
 
-        self.train_file = "data/" + self.dataset + "/train.conllx"
-        self.dev_file = "data/" + self.dataset + "/dev.conllx"
-        self.test_file = "data/" + self.dataset + "/test.conllx"
+        # self.train_file = "data/" + self.dataset + "/train.conllx"
+        # self.dev_file = "data/" + self.dataset + "/dev.conllx"
+        # self.test_file = "data/" + self.dataset + "/test.conllx"
         self.label2idx = {}
         self.idx2labels = []
         self.char2idx = {}
